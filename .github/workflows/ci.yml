@@ -1,15 +1,20 @@
 name: CI/CD Pipeline
 
 on:
+  pull_request:
+    branches: [ "dev", "main" ]
   push:
-    branches: [ "main" ]
+    branches: [ "dev", "main" ]
 
 jobs:
-  build-and-push:
+
+
+  tests_and_build:
+    if: github.ref != 'refs/heads/main'  
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -20,6 +25,34 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
+          pip install pytest flake8
+
+      - name: Lint the code
+        run: flake8 .
+
+      - name: Run unit tests
+        run: pytest tests/unit
+
+      - name: Run integration tests
+        run: pytest tests/integration
+
+      - name: Run e2e tests
+        run: pytest tests/e2e
+
+      - name: Build Docker image (validation only)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false     
+
+  push_to_dockerhub:
+    if: github.ref == 'refs/heads/main'
+    needs: tests_and_build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Login to DockerHub
         uses: docker/login-action@v3
@@ -27,7 +60,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and Push Docker image
+      - name: Build and push image to DockerHub
         uses: docker/build-push-action@v5
         with:
           context: .
