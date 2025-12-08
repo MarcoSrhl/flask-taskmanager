@@ -15,7 +15,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
           python-version: "3.12"
 
@@ -23,16 +23,29 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install flake8 pytest
+          pip install flake8 pytest selenium
+
+      - name: Install Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
 
       - name: Lint the code
         run: |
-          flake8 app.py models.py migrate.py extensions.py \
-            --max-line-length=120 \
-            --ignore=W291,E303
+          flake8 app.py models.py migrate.py extensions.py --ignore=W291,E303 --max-line-length=120
 
-      - name: Run unit/integration/e2e tests
-        run: pytest
+      - name: Run unit and integration tests
+        run: pytest tests/test_unit.py tests/test_integration.py
+
+      - name: Start Flask app for e2e tests
+        run: |
+          python app.py &
+          sleep 5
+
+      - name: Run e2e tests
+        env:
+          BASE_URL: "http://127.0.0.1:5000"
+        run: pytest tests/test_e2e.py
 
       - name: Build Docker image (validation only)
         uses: docker/build-push-action@v5
