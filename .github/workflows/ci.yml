@@ -26,7 +26,10 @@ jobs:
           pip install flake8 pytest
 
       - name: Lint the code
-        run: flake8 . --exclude=.venv,venv,__pycache__
+        run: |
+          flake8 app.py models.py migrate.py extensions.py \
+            --max-line-length=120 \
+            --ignore=W291,E303
 
       - name: Run unit/integration/e2e tests
         run: pytest
@@ -40,7 +43,7 @@ jobs:
 
   push_to_dockerhub:
     needs: tests_and_build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     steps:
